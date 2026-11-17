@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+.pytest_cache/
+data/image_cache/
+data/trips.json
+data/preferences.json

@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Trip Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tiled band on top, form panels on the left, sticky trip summary on the right (docked bar on phones).
+   Palette: azulejo cobalt on cool paper, laterite as the single warm note. */
+:root{
+  --bg:#EEF2F6; --surface:#FFFFFF; --surface-2:#E4EAF2; --line:#C7D2E0;
+  --fg:#0D1B2E; --fg-2:#46586E; --accent:#1D4ED8; --accent-fg:#FFFFFF; --accent-soft:#DCE6FB;
+  --laterite:#B8461B; --good:#0F7A55; --focus:#1D4ED8;
+  --tile:#E1E8F2; --tile-line:#BFCDE3;
+  --c1:#1D4ED8; --c2:#C2571F; --c3:#0F8A7E; --c4:#A87B05; --c5:#6B7A90;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1220; --surface:#111C30; --surface-2:#18263F; --line:#27375A;
+    --fg:#E8EEF8; --fg-2:#9FB0C9; --accent:#7AA2FF; --accent-fg:#0A1220; --accent-soft:#1B2C52;
+    --laterite:#F28B5B; --good:#4CC59A; --focus:#9DB9FF;
+    --tile:#101C33; --tile-line:#1E3156;
+    --c1:#7AA2FF; --c2:#F28B5B; --c3:#3FC4B4; --c4:#E0B43C; --c5:#93A3BC;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1220; --surface:#111C30; --surface-2:#18263F; --line:#27375A;
+  --fg:#E8EEF8; --fg-2:#9FB0C9; --accent:#7AA2FF; --accent-fg:#0A1220; --accent-soft:#1B2C52;
+  --laterite:#F28B5B; --good:#4CC59A; --focus:#9DB9FF;
+  --tile:#101C33; --tile-line:#1E3156;
+  --c1:#7AA2FF; --c2:#F28B5B; --c3:#3FC4B4; --c4:#E0B43C; --c5:#93A3BC;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+
+.band{height:44px;background-color:var(--tile);
+  background-image:
+    radial-gradient(circle at 0 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+    radial-gradient(circle at 100% 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+    radial-gradient(circle at 0 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+    radial-gradient(circle at 100% 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px);
+  background-size:28px 28px;border-bottom:1px solid var(--line)}
+.wrap{max-width:1160px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.head{display:grid;gap:8px;margin-bottom:24px;max-width:60ch}
+.kicker{font-size:.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--laterite)}
+h1{font-size:clamp(2rem,5vw,3rem);line-height:1.05;font-weight:700;letter-spacing:-.02em}
+.lede{color:var(--fg-2)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+form{display:grid;gap:16px;min-width:0}
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:20px;margin:0;min-width:0;display:grid;gap:18px}
+.panel>legend{padding:0;float:left;width:100%}
+.panel>legend+*{clear:both}
+.panel h2{font-size:1.15rem;font-weight:700;letter-spacing:-.01em}
+.panel .hint{font-size:.85rem;color:var(--fg-2)}
+.field{display:grid;gap:6px;min-width:0}
+.field>.lbl,.lbl{font-size:.8rem;font-weight:600;color:var(--fg-2)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+input[type=text],input[type=date],input[type=number],select,textarea{
+  width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+textarea{resize:vertical;min-height:84px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative;display:inline-flex}
+.chip input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.chip span{display:inline-block;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.9rem;transition:background .15s,border-color .15s}
+.chip:hover span{border-color:var(--accent)}
+.chip input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.chip input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{position:relative;display:block}
+.card input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.card span{display:grid;gap:2px;height:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.card strong{font-family:var(--font-display);font-size:1rem}
+.card small{color:var(--fg-2);font-size:.82rem}
+.card:hover span{border-color:var(--accent)}
+.card input:checked+span{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.card input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface);width:max-content}
+.stepper button{width:42px;height:42px;border:0;background:var(--surface-2);cursor:pointer;font-size:1.2rem;line-height:1}
+.stepper button:hover{background:var(--accent-soft)}
+.stepper output{min-width:56px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.who{display:flex;flex-wrap:wrap;gap:20px}
+.range-line{font-family:var(--font-mono);font-size:.85rem;color:var(--fg);padding:10px 12px;background:var(--surface-2);border-radius:8px}
+.note{font-size:.85rem;padding:10px 12px;border-radius:8px;border:1px solid var(--laterite);color:var(--laterite)}
+.note[hidden]{display:none!important}
+
+.amount{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:16px;align-items:center}
+.amount input[type=number]{font-family:var(--font-display);font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.split{display:grid;gap:12px}
+.split-row{display:grid;grid-template-columns:96px minmax(0,1fr) 128px;gap:12px;align-items:center}
+.split-row .nm{display:flex;align-items:center;gap:8px;font-weight:500}
+.sw{width:10px;height:10px;border-radius:2px;flex:none}
+.split-row .val{text-align:right;font-variant-numeric:tabular-nums;font-size:.88rem}
+.split-row .val b{font-weight:600}
+.presets{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600;padding:12px 16px;width:100%}
+.btn.primary:hover{filter:brightness(1.06)}
+
+.summary{position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:grid;gap:14px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:20px;min-width:0}
+.summary h2{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-2);font-family:var(--font-body);font-weight:600}
+.s-dest{font-family:var(--font-display);font-size:1.7rem;font-weight:700;line-height:1.1;overflow-wrap:anywhere}
+.s-meta{color:var(--fg-2);font-size:.9rem;display:grid;gap:2px}
+.s-total{font-family:var(--font-display);font-size:2.1rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.s-pp{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem;color:var(--fg-2)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:.78rem;font-weight:600;color:var(--fg)}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface-2)}
+.bar i{display:block;height:100%}
+.legend{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.88rem}
+.legend li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.legend .amt{font-variant-numeric:tabular-nums}
+.issues{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.85rem}
+.issues li{color:var(--laterite)}
+.issues li.ok{color:var(--good)}
+.status{font-size:.85rem;min-height:1.2em}
+.status.err{color:var(--laterite)}
+.status.ok{color:var(--good)}
+.actions{display:grid;gap:8px}
+details{border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:.88rem}
+pre{margin:0;padding:12px;overflow-x:auto;font-family:var(--font-mono);font-size:.76rem;line-height:1.5;max-height:340px;border-top:1px solid var(--line)}
+
+.dock{display:none}
+@media (max-width:899px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .summary{position:static}
+  .wrap{padding-bottom:104px}
+  .dock{display:flex;gap:12px;align-items:center;justify-content:space-between;position:fixed;left:0;right:0;bottom:0;z-index:20;
+    background:var(--surface);border-top:1px solid var(--line);
+    padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .dock .d-total{font-family:var(--font-display);font-weight:700;font-size:1.2rem;font-variant-numeric:tabular-nums}
+  .dock .d-pp{font-size:.78rem;color:var(--fg-2)}
+  .dock .btn.primary{width:auto;white-space:nowrap}
+}
+@media (max-width:520px){
+  .panel{padding:16px}
+  .amount{grid-template-columns:minmax(0,1fr)}
+  .split-row{grid-template-columns:84px minmax(0,1fr);}
+  .split-row .val{grid-column:1 / -1;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="band" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="head">
+    <p class="kicker">Travel planner</p>
+    <h1>Plan your trip</h1>
+    <p class="lede">Choose where, when, who and how much. Each choice reaches the planner as its own field, so nothing depends on how a sentence is worded.</p>
+  </header>
+
+  <div class="layout">
+    <form id="planner" novalidate autocomplete="off">
+
+      <fieldset class="panel">
+        <legend><h2>Where</h2></legend>
+        <div class="row">
+          <div class="field">
+            <label class="lbl" for="destination">Destination</label>
+            <input type="text" id="destination" list="dest-list" placeholder="Search or type a place">
+            <datalist id="dest-list">
+              <option value="Goa"><option value="Kerala"><option value="Rajasthan"><option value="Himachal Pradesh">
+              <option value="Mumbai"><option value="Delhi"><option value="Pondicherry"><option value="Hampi">
+              <option value="Andaman Islands"><option value="Ladakh">
+            </datalist>
+          </div>
+          <div class="field">
+            <label class="lbl" for="origin">Travelling from (optional)</label>
+            <input type="text" id="origin" placeholder="City or airport">
+          </div>
+        </div>
+        <div class="field" id="areas-field">
+          <span class="lbl">Areas to focus on</span>
+          <div class="chips" id="areas"></div>
+          <p class="hint">Pick none to let the planner choose.</p>
+        </div>
+        <div class="field">
+          <span class="lbl">How you reach it</span>
+          <div class="chips" id="arrival"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>When</h2></legend>
+        <div class="row">
+          <div class="field">
+            <label class="lbl" for="start">Start date</label>
+            <input type="date" id="start">
+          </div>
+          <div class="field">
+            <span class="lbl">Length of trip</span>
+            <div class="stepper">
+              <button type="button" data-step="days" data-dir="-1" aria-label="Fewer days">&minus;</button>
+              <output id="days-out" aria-live="polite"></output>
+              <button type="button" data-step="days" data-dir="1" aria-label="More days">+</button>
+            </div>
+          </div>
+        </div>
+        <p class="range-line" id="range-line"></p>
+        <div class="chips"><label class="chip"><input type="checkbox" id="flex"><span>My dates can shift by 2 days</span></label></div>
+        <p class="note" id="season-note" hidden></p>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>Who is going</h2></legend>
+        <div class="who">
+          <div class="field">
+            <span class="lbl">Adults</span>
+            <div class="stepper">
+              <button type="button" data-step="adults" data-dir="-1" aria-label="Fewer adults">&minus;</button>
+              <output id="adults-out" aria-live="polite"></output>
+              <button type="button" data-step="adults" data-dir="1" aria-label="More adults">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl">Children</span>
+            <div class="stepper">
+              <button type="button" data-step="children" data-dir="-1" aria-label="Fewer children">&minus;</button>
+              <output id="children-out" aria-live="polite"></output>
+              <button type="button" data-step="children" data-dir="1" aria-label="More children">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="lbl">Type of group</span>
+          <div class="chips" id="groupType"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>Budget</h2></legend>
+        <div class="row">
+          <div class="field">
+            <label class="lbl" for="currency">Currency</label>
+            <select id="currency">
+              <option value="INR">INR &middot; Indian rupee</option>
+              <option value="USD">USD &middot; US dollar</option>
+              <option value="EUR">EUR &middot; Euro</option>
+            </select>
+          </div>
+          <div class="field">
+            <span class="lbl">Amount applies to</span>
+            <div class="chips" id="mode"></div>
+          </div>
+        </div>
+        <div class="amount">
+          <div class="field">
+            <label class="lbl" for="amt-num" id="amt-lbl">Total budget</label>
+            <input type="number" id="amt-num" inputmode="numeric" min="0">
+          </div>
+          <div class="field">
+            <label class="lbl" for="amt-range">Adjust</label>
+            <input type="range" id="amt-range">
+          </div>
+        </div>
+        <div class="field">
+          <span class="lbl">Where the money goes</span>
+          <div class="presets" id="presets">
+            <button type="button" class="btn" data-preset="balanced">Balanced</button>
+            <button type="button" class="btn" data-preset="stay">Stay-heavy</button>
+            <button type="button" class="btn" data-preset="foodie">Foodie</button>
+            <button type="button" class="btn" data-preset="explorer">Explorer</button>
+          </div>
+        </div>
+        <div class="split" id="split"></div>
+        <p class="hint">Moving one slider rebalances the others so the shares always add up to 100%. These are planning shares, not quoted prices.</p>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>Interests</h2></legend>
+        <div class="chips" id="interests"></div>
+        <div class="field">
+          <span class="lbl">Pace</span>
+          <div class="cards" id="pace"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>Stay, travel and food</h2></legend>
+        <div class="field">
+          <span class="lbl">Where you sleep</span>
+          <div class="chips" id="stay"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Getting around (pick any)</span>
+          <div class="chips" id="transport"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Eating</span>
+          <div class="chips" id="diet"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Food you want to spend on (pick any)</span>
+          <div class="chips" id="foodStyles"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="panel">
+        <legend><h2>Anything else</h2></legend>
+        <div class="field">
+          <label class="lbl" for="notes">Notes for the planner</label>
+          <textarea id="notes" placeholder="Early flights, a birthday dinner, places you already know you want to see"></textarea>
+        </div>
+      </fieldset>
+    </form>
+
+    <aside class="summary" id="summary" aria-label="Trip summary">
+      <h2>Your trip</h2>
+      <div>
+        <p class="s-dest" id="s-dest"></p>
+        <div class="s-meta"><span id="s-dates"></span><span id="s-who"></span></div>
+      </div>
+      <div>
+        <p class="s-total" id="s-total"></p>
+        <p class="s-pp"><span id="s-pp"></span><span class="pill" id="s-band"></span></p>
+      </div>
+      <div class="bar" id="s-bar" role="img" aria-label="Budget split"></div>
+      <ul class="legend" id="s-legend"></ul>
+      <ul class="issues" id="s-issues"></ul>
+      <div class="actions">
+        <button type="button" class="btn primary" id="generate">Generate itinerary</button>
+        <button type="button" class="btn" id="copy">Copy request JSON</button>
+        <button type="button" class="btn" id="reset">Reset to defaults</button>
+      </div>
+      <p class="status" id="status" role="status"></p>
+      <details id="payload-details">
+        <summary>Request sent to the planner</summary>
+        <pre id="payload" tabindex="0"></pre>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<div class="dock">
+  <div><div class="d-total" id="d-total"></div><div class="d-pp" id="d-pp"></div></div>
+  <button type="button" class="btn primary" id="generate-dock">Generate itinerary</button>
+</div>
+
+<script>
+(function(){
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+
+  var CUR={
+    INR:{loc:'en-IN',def:25000,tot:{min:3000,max:300000,step:500},pp:{min:1000,max:75000,step:250},band:[1500,3500]},
+    USD:{loc:'en-US',def:400,tot:{min:50,max:6000,step:25},pp:{min:25,max:1500,step:25},band:[25,60]},
+    EUR:{loc:'en-IE',def:400,tot:{min:50,max:6000,step:25},pp:{min:25,max:1500,step:25},band:[25,55]}
+  };
+  var KEYS=['stay','food','transport','activities','misc'];
+  var KNAME={stay:'Stay',food:'Food',transport:'Transport',activities:'Activities',misc:'Miscellaneous'};
+  var KCOL={stay:'--c1',food:'--c2',transport:'--c3',activities:'--c4',misc:'--c5'};
+  var PRESETS={
+    balanced:{stay:35,food:25,transport:20,activities:15,misc:5},
+    stay:{stay:45,food:20,transport:15,activities:15,misc:5},
+    foodie:{stay:30,food:35,transport:15,activities:15,misc:5},
+    explorer:{stay:25,food:20,transport:25,activities:25,misc:5}
+  };
+  var AREAS={
+    'goa':['Baga & Calangute','Candolim','Anjuna & Vagator','Mandrem & Arambol','Panjim & Fontainhas','Old Goa','Colva & Benaulim','Palolem & Agonda'],
+    'kerala':['Kochi','Munnar','Alleppey backwaters','Varkala','Thekkady','Wayanad'],
+    'rajasthan':['Jaipur','Udaipur','Jodhpur','Jaisalmer','Pushkar'],
+    'himachal pradesh':['Manali','Kasol','Shimla','Dharamshala','Spiti']
+  };
+  var OPT={
+    arrival:[['Flight','Flight'],['Train','Train'],['Bus','Bus'],['Car','Own car'],['Already there','Already there']],
+    groupType:[['Couple','Couple'],['Friends','Friends'],['Family','Family'],['Solo','Solo'],['Colleagues','Colleagues']],
+    mode:[['total','Total for the trip'],['per_person','Per person']],
+    interests:[['beaches','Beaches'],['food','Food'],['nightlife','Nightlife'],['culture','Culture & heritage'],['nature','Nature'],['adventure','Adventure'],['shopping','Shopping & markets'],['wellness','Wellness'],['photography','Photography']],
+    stay:[['Hostel / dorm','Hostel / dorm'],['Budget hotel','Budget hotel'],['Mid-range hotel','Mid-range hotel'],['Resort','Resort'],['Homestay / villa','Homestay / villa']],
+    transport:[['Rented scooter','Rented scooter'],['Taxi / cab','Taxi / cab'],['Public bus','Public bus'],['Own car','Own car'],['Walking','Mostly on foot']],
+    diet:[['Everything','Everything'],['Vegetarian','Vegetarian'],['Vegan','Vegan'],['Pescatarian','Pescatarian']],
+    foodStyles:[['Local cuisine','Local cuisine'],['Street food','Street food'],['Seafood','Seafood'],['Cafes','Cafes'],['Fine dining','Fine dining']]
+  };
+  var PACE=[['relaxed','Relaxed','About 2 stops a day'],['balanced','Balanced','3 to 4 stops a day'],['packed','Packed','5 or more stops a day']];
+  var MULTI={areas:1,interests:1,transport:1,foodStyles:1};
+
+  function defaults(){
+    return {destination:'Goa',areas:[],origin:'',arrival:'Flight',start:'2026-12-10',days:4,flex:false,
+      adults:2,children:0,groupType:'Couple',currency:'INR',mode:'total',amount:25000,
+      split:Object.assign({},PRESETS.balanced),interests:['beaches','food'],pace:'balanced',
+      stay:'Budget hotel',transport:['Rented scooter'],diet:'Everything',foodStyles:['Local cuisine'],notes:''};
+  }
+  var S=defaults();
+
+  function parseD(s){var p=(s||'').split('-').map(Number);if(p.length!==3||p.some(isNaN))return null;var d=new Date(p[0],p[1]-1,p[2]);return isNaN(d)?null:d}
+  function isoD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  function addDays(d,n){var x=new Date(d.getTime());x.setDate(x.getDate()+n);return x}
+  var dfmt=new Intl.DateTimeFormat('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  var dfmtY=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  function money(n){var c=CUR[S.currency];return new Intl.NumberFormat(c.loc,{style:'currency',currency:S.currency,maximumFractionDigits:0}).format(Math.round(n))}
+  function people(){return S.adults+S.children}
+  function total(){return S.mode==='total'?S.amount:S.amount*people()}
+  function ppd(){return total()/people()/S.days}
+  function destKey(){return S.destination.trim().toLowerCase()}
+  function join(a){if(a.length<=1)return a.join('');return a.slice(0,-1).join(', ')+' and '+a[a.length-1]}
+  function labelOf(group,v){var o=OPT[group].filter(function(x){return x[0]===v})[0];return o?o[1]:v}
+
+  function buildChips(id,group){
+    var multi=!!MULTI[group];
+    $('#'+id).innerHTML=OPT[group].map(function(o){
+      return '<label class="chip"><input type="'+(multi?'checkbox':'radio')+'" name="'+group+'" value="'+o[0]+'"><span>'+o[1]+'</span></label>';
+    }).join('');
+  }
+  function buildStatic(){
+    ['arrival','groupType','mode','interests','stay','transport','diet','foodStyles'].forEach(function(g){buildChips(g,g)});
+    $('#pace').innerHTML=PACE.map(function(p){
+      return '<label class="card"><input type="radio" name="pace" value="'+p[0]+'"><span><strong>'+p[1]+'</strong><small>'+p[2]+'</small></span></label>';
+    }).join('');
+    $('#split').innerHTML=KEYS.map(function(k){
+      return '<div class="split-row"><span class="nm"><i class="sw" style="background:var('+KCOL[k]+')"></i>'+KNAME[k]+'</span>'+
+        '<input type="range" id="sp-'+k+'" min="0" max="100" step="1" aria-label="'+KNAME[k]+' share">'+
+        '<span class="val"><b id="sp-p-'+k+'"></b> &middot; <span id="sp-a-'+k+'"></span></span></div>';
+    }).join('');
+  }
+  function renderAreas(){
+    var list=AREAS[destKey()]||[];
+    S.areas=S.areas.filter(function(a){return list.indexOf(a)>-1});
+    $('#areas-field').hidden=!list.length;
+    $('#areas').innerHTML=list.map(function(a){
+      return '<label class="chip"><input type="checkbox" name="areas" value="'+a+'"'+(S.areas.indexOf(a)>-1?' checked':'')+'><span>'+a+'</span></label>';
+    }).join('');
+  }
+  function syncInputs(){
+    $('#destination').value=S.destination;$('#origin').value=S.origin;$('#start').value=S.start;
+    $('#flex').checked=S.flex;$('#currency').value=S.currency;$('#notes').value=S.notes;
+    $$('#planner input[type=checkbox][name],#planner input[type=radio][name]').forEach(function(i){
+      var v=S[i.name];i.checked=Array.isArray(v)?v.indexOf(i.value)>-1:v===i.value;
+    });
+    renderAreas();
+  }
+
+  function setSplit(key,val){
+    val=Math.max(0,Math.min(100,Math.round(val)));
+    var others=KEYS.filter(function(k){return k!==key});
+    var oldSum=others.reduce(function(a,k){return a+S.split[k]},0);
+    var rem=100-val,next={};
+    others.forEach(function(k){next[k]=oldSum===0?Math.floor(rem/others.length):Math.round(S.split[k]*rem/oldSum)});
+    var diff=rem-others.reduce(function(a,k){return a+next[k]},0);
+    var big=others.slice().sort(function(a,b){return next[b]-next[a]})[0];
+    next[big]=Math.max(0,next[big]+diff);
+    next[key]=val;S.split=next;
+  }
+
+  function issues(){
+    var errors=[],warnings=[];
+    if(!S.destination.trim())errors.push('Add a destination.');
+    var sd=parseD(S.start);
+    if(!sd)errors.push('Pick a start date.');
+    else{var t=new Date();t.setHours(0,0,0,0);if(sd<t)errors.push('The start date is in the past.')}
+    if(!S.interests.length)errors.push('Pick at least one interest.');
+    if(!(S.amount>0))errors.push('Enter a budget above zero.');
+    else{var b=CUR[S.currency].band[0]/2;if(ppd()<b)warnings.push('This budget is very tight for '+S.days+' days.')}
+    return {errors:errors,warnings:warnings};
+  }
+
+  function sentence(){
+    var im=S.interests.map(function(v){return labelOf('interests',v).toLowerCase()});
+    return 'Plan a '+S.days+'-day trip to '+(S.destination.trim()||'my destination')+' with a budget of '+S.currency+' '+Math.round(total())+
+      ' for '+people()+(people()===1?' person':' people')+'.'+(im.length?' I like '+join(im)+'.':'')+' Start on '+S.start+' and keep it '+S.pace+'.';
+  }
+  function payload(){
+    var t=Math.round(total()),sd=parseD(S.start),split={};
+    KEYS.forEach(function(k){split[k]=Math.round(t*S.split[k]/100)});
+    return {
+      request:sentence(),
+      destination:S.destination.trim(),
+      areas:S.areas.slice(),
+      origin:S.origin.trim()||null,
+      arrival_mode:S.arrival,
+      start_date:S.start,
+      end_date:sd?isoD(addDays(sd,S.days-1)):null,
+      days:S.days,
+      flexible_dates:S.flex,
+      group_size:people(),
+      travelers:{adults:S.adults,children:S.children},
+      group_type:S.groupType,
+      budget:t,
+      currency:S.currency,
+      budget_mode:S.mode,
+      budget_split:split,
+      interests:S.interests.slice(),
+      pace:S.pace,
+      stay_type:S.stay,
+      local_transport:S.transport.slice(),
+      diet:S.diet,
+      food_styles:S.foodStyles.slice(),
+      notes:S.notes.trim()
+    };
+  }
+
+  function render(){
+    var c=CUR[S.currency],r=c[S.mode==='total'?'tot':'pp'];
+    $('#days-out').textContent=S.days+(S.days===1?' day':' days');
+    $('#adults-out').textContent=S.adults;$('#children-out').textContent=S.children;
+    var sd=parseD(S.start),line='Pick a start date';
+    if(sd){var ed=addDays(sd,S.days-1);line=dfmt.format(sd)+'  to  '+dfmt.format(ed)+'  ·  '+S.days+' days, '+Math.max(S.days-1,0)+' nights'}
+    $('#range-line').textContent=line;
+    var note=$('#season-note');note.hidden=true;
+    if(destKey()==='goa'&&sd){
+      var m=sd.getMonth();
+      if(m>=10||m<=1){note.hidden=false;note.textContent='Goa is in peak season from November to February. Book stays early and expect higher room rates.'}
+      else if(m>=5&&m<=8){note.hidden=false;note.textContent='Goa is in monsoon from June to September. Many beach shacks close and swimming is often restricted.'}
+    }
+    var rg=$('#amt-range');rg.min=r.min;rg.max=r.max;rg.step=r.step;rg.value=S.amount;
+    var nm=$('#amt-num');nm.step=r.step;if(document.activeElement!==nm)nm.value=S.amount||'';
+    $('#amt-lbl').textContent=S.mode==='total'?'Total budget ('+S.currency+')':'Budget per person ('+S.currency+')';
+    var t=total();
+    KEYS.forEach(function(k){
+      $('#sp-'+k).value=S.split[k];$('#sp-p-'+k).textContent=S.split[k]+'%';$('#sp-a-'+k).textContent=money(t*S.split[k]/100);
+    });
+
+    $('#s-dest').textContent=S.destination.trim()||'Choose a destination';
+    $('#s-dates').textContent=sd?dfmtY.format(sd)+' · '+S.days+(S.days===1?' day':' days'):'No start date';
+    $('#s-who').textContent=S.adults+(S.adults===1?' adult':' adults')+(S.children?', '+S.children+(S.children===1?' child':' children'):'')+' · '+S.groupType;
+    $('#s-total').textContent=money(t);
+    var p=ppd();
+    $('#s-pp').textContent=money(p)+' per person per day';
+    var band=p<c.band[0]?'Tight':(p<c.band[1]?'Comfortable':'Roomy');
+    $('#s-band').textContent=band;
+    $('#s-bar').innerHTML=KEYS.map(function(k){return '<i style="width:'+S.split[k]+'%;background:var('+KCOL[k]+')"></i>'}).join('');
+    $('#s-legend').innerHTML=KEYS.map(function(k){
+      return '<li><i class="sw" style="background:var('+KCOL[k]+')"></i><span>'+KNAME[k]+'</span><span class="amt">'+money(t*S.split[k]/100)+'</span></li>';
+    }).join('');
+    var iss=issues(),items=iss.errors.concat(iss.warnings);
+    $('#s-issues').innerHTML=items.length?items.map(function(x){return '<li>'+x+'</li>'}).join(''):'<li class="ok">Ready to plan.</li>';
+    $('#payload').textContent=JSON.stringify(payload(),null,2);
+    $('#d-total').textContent=money(t);$('#d-pp').textContent=money(p)+' per person per day';
+  }
+
+  function toggle(arr,v,on){var i=arr.indexOf(v);if(on&&i<0)arr.push(v);if(!on&&i>-1)arr.splice(i,1)}
+
+  function onField(e){
+    var t=e.target,id=t.id,name=t.name;
+    if(id==='destination'){S.destination=t.value;renderAreas()}
+    else if(id==='origin')S.origin=t.value;
+    else if(id==='notes')S.notes=t.value;
+    else if(id==='start')S.start=t.value;
+    else if(id==='flex')S.flex=t.checked;
+    else if(id==='amt-range'||id==='amt-num')S.amount=Math.max(0,Number(t.value)||0);
+    else if(id==='currency'){
+      S.currency=t.value;var d=CUR[S.currency].def;S.amount=S.mode==='total'?d:Math.round(d/people()/CUR[S.currency].pp.step)*CUR[S.currency].pp.step;
+    }
+    else if(id.indexOf('sp-')===0&&id.indexOf('sp-p-')!==0&&id.indexOf('sp-a-')!==0)setSplit(id.slice(3),Number(t.value));
+    else if(name==='mode'){
+      if(t.checked&&S.mode!==t.value){
+        var st=CUR[S.currency].pp.step;
+        S.amount=t.value==='per_person'?Math.max(st,Math.round(S.amount/people()/st)*st):Math.round(S.amount*people());
+        S.mode=t.value;
+      }
+    }
+    else if(name&&MULTI[name])toggle(S[name],t.value,t.checked);
+    else if(name&&t.checked)S[name]=t.value;
+    render();
+  }
+  $('#planner').addEventListener('input',onField);
+  $('#planner').addEventListener('change',onField);
+  $('#planner').addEventListener('submit',function(e){e.preventDefault()});
+
+  $('#planner').addEventListener('click',function(e){
+    var b=e.target.closest('[data-step]');
+    if(b){
+      var k=b.getAttribute('data-step'),dir=Number(b.getAttribute('data-dir')),lim={days:[1,21],adults:[1,10],children:[0,6]}[k];
+      var old=people();
+      S[k]=Math.max(lim[0],Math.min(lim[1],S[k]+dir));
+      if(k!=='days'&&S.mode==='per_person'){}
+      if(k==='adults'||k==='children'){
+        if(S.adults===1&&S.children===0&&S.groupType==='Couple')S.groupType='Solo';
+        if(S.adults===2&&S.children===0&&S.groupType==='Solo')S.groupType='Couple';
+        if(S.children>0&&S.groupType!=='Family')S.groupType='Family';
+        syncInputs();
+      }
+      render();return;
+    }
+    var pr=e.target.closest('[data-preset]');
+    if(pr){S.split=Object.assign({},PRESETS[pr.getAttribute('data-preset')]);render()}
+  });
+
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  async function generate(){
+    var iss=issues(),st=$('#status');
+    if(iss.errors.length){
+      st.className='status err';st.textContent=iss.errors.join(' ');
+      try{$('#status').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})}catch(e){}
+      return;
+    }
+
+    st.className='status';st.textContent='Planning your trip...';
+    $('#payload-details').open=true;
+    $('#generate').disabled=true;$('#generate-dock').disabled=true;
+    try{
+      var response=await fetch('/plan',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload())
+      });
+      var result=await response.json();
+      if(!response.ok)throw new Error(result.error||'The planner could not complete this request.');
+      if(!result.redirect_url)throw new Error('The planner did not return a saved trip.');
+      window.location.assign(result.redirect_url);
+    }catch(error){
+      st.className='status err';
+      st.textContent='Could not plan trip: '+error.message;
+      $('#generate').disabled=false;$('#generate-dock').disabled=false;
+    }
+    try{$('#status').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})}catch(e){}
+  }
+  $('#generate').addEventListener('click',generate);
+  $('#generate-dock').addEventListener('click',generate);
+
+  $('#copy').addEventListener('click',function(){
+    var txt=$('#payload').textContent,st=$('#status');
+    function fallback(){
+      $('#payload-details').open=true;
+      var r=document.createRange();r.selectNodeContents($('#payload'));
+      var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+      st.className='status';st.textContent='Copy was blocked here. The request is selected, press Ctrl+C or Cmd+C.';
+    }
+    try{
+      navigator.clipboard.writeText(txt).then(function(){st.className='status ok';st.textContent='Request JSON copied.'},fallback);
+    }catch(e){fallback()}
+  });
+  $('#reset').addEventListener('click',function(){
+    S=defaults();syncInputs();$('#status').textContent='';$('#status').className='status';$('#payload-details').open=false;render();
+  });
+
+  buildStatic();syncInputs();render();
+})();
+</script>
+</body>
+</html>

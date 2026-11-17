@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trip Itinerary</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root{
+      --bg:#EEF2F6;--surface:#FFFFFF;--surface-2:#E4EAF2;--line:#C7D2E0;
+      --fg:#0D1B2E;--fg-2:#46586E;--accent:#1D4ED8;--accent-fg:#FFFFFF;--accent-soft:#DCE6FB;
+      --laterite:#B8461B;--focus:#1D4ED8;--tile:#E1E8F2;--tile-line:#BFCDE3;
+      --c1:#1D4ED8;--c2:#C2571F;--c3:#0F8A7E;--c4:#A87B05;--c5:#6B7A90;
+      --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+      --font-body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+      --font-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    }
+    @media(prefers-color-scheme:dark){
+      :root:not([data-theme="light"]){--bg:#0A1220;--surface:#111C30;--surface-2:#18263F;--line:#27375A;
+        --fg:#E8EEF8;--fg-2:#9FB0C9;--accent:#7AA2FF;--accent-fg:#0A1220;--accent-soft:#1B2C52;
+        --laterite:#F28B5B;--focus:#9DB9FF;--tile:#101C33;--tile-line:#1E3156;
+        --c1:#7AA2FF;--c2:#F28B5B;--c3:#3FC4B4;--c4:#E0B43C;--c5:#93A3BC;color-scheme:dark}
+    }
+    :root[data-theme="dark"]{--bg:#0A1220;--surface:#111C30;--surface-2:#18263F;--line:#27375A;
+      --fg:#E8EEF8;--fg-2:#9FB0C9;--accent:#7AA2FF;--accent-fg:#0A1220;--accent-soft:#1B2C52;
+      --laterite:#F28B5B;--focus:#9DB9FF;--tile:#101C33;--tile-line:#1E3156;
+      --c1:#7AA2FF;--c2:#F28B5B;--c3:#3FC4B4;--c4:#E0B43C;--c5:#93A3BC;color-scheme:dark}
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5}
+    h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}p{margin:0}a{color:var(--accent)}
+    a:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+    .band{height:44px;background-color:var(--tile);border-bottom:1px solid var(--line);background-size:28px 28px;
+      background-image:radial-gradient(circle at 0 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 100% 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 0 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 100% 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px)}
+    .wrap{max-width:1080px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px));display:grid;gap:22px}
+    .topbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;text-decoration:none;color:var(--fg)}
+    .btn:hover{border-color:var(--accent)}.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+    .btn[aria-disabled="true"]{opacity:.7;pointer-events:none}
+    .dl-note{font-size:.85rem;color:var(--fg-2);min-height:1.2em}
+    .sample{border:1px solid var(--laterite);color:var(--laterite);border-radius:8px;padding:10px 12px;font-size:.88rem}
+    .hero{position:relative;border-radius:12px;overflow:hidden;min-height:260px;aspect-ratio:21/8;background-color:var(--tile);border:1px solid var(--line);background-size:28px 28px;
+      background-image:radial-gradient(circle at 0 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 100% 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 0 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),
+      radial-gradient(circle at 100% 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px)}
+    .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .hero .cap{position:absolute;left:0;right:0;bottom:0;padding:48px 24px 22px;color:#fff;display:grid;gap:4px;background:linear-gradient(to top,rgba(6,12,24,.88),rgba(6,12,24,.45) 55%,rgba(6,12,24,0))}
+    .hero h1{font-size:clamp(2.2rem,7vw,4rem);line-height:1;font-weight:700;letter-spacing:-.025em;overflow-wrap:anywhere}
+    .hero .when{font-size:1rem;opacity:.95}.hero.noimg .cap{background:none;color:var(--fg);align-content:end}
+    .chips{display:flex;flex-wrap:wrap;gap:8px}.pill{display:inline-block;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.85rem}
+    .pill.hl{background:var(--accent-soft);border-color:var(--accent)}
+    .grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+    .card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:20px;display:grid;gap:14px;min-width:0}
+    .card h2{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-2);font-family:var(--font-body);font-weight:600}
+    .total{font-family:var(--font-display);font-size:2.4rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+    .sub{color:var(--fg-2);font-size:.9rem}.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface-2)}.bar i{display:block;height:100%}
+    .legend{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+    .legend li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+    .sw{width:10px;height:10px;border-radius:2px;flex:none}.num{font-variant-numeric:tabular-nums}
+    .facts{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:.92rem}
+    .facts dt{color:var(--fg-2)}.facts dd{margin:0;overflow-wrap:anywhere}
+    .daynav{display:flex;flex-wrap:wrap;gap:8px}.daynav a{padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);text-decoration:none;color:var(--fg);font-size:.88rem;font-weight:500}
+    .daynav a:hover{border-color:var(--accent)}
+    .day{border:1px solid var(--line);background:var(--surface);border-radius:10px;overflow:hidden;scroll-margin-top:16px}
+    .day-h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+    .day-h h2{font-size:1.4rem;font-weight:700;letter-spacing:-.01em}.day-h .d{color:var(--fg-2);font-size:.9rem}
+    .day-meta{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.stops{list-style:none;margin:0;padding:0}
+    .stop{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);align-items:start}
+    .stop:last-child{border-bottom:0}
+    .thumb{width:150px;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background-color:var(--tile);border:1px solid var(--line);position:relative;background-size:28px 28px;
+      background-image:radial-gradient(circle at 0 0,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px),radial-gradient(circle at 100% 100%,transparent 8px,var(--tile-line) 8px 9.5px,transparent 9.5px)}
+    .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .stop h3{font-size:1.1rem;font-weight:700;overflow-wrap:anywhere}
+    .stop .tag{font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--laterite)}
+    .stop p{color:var(--fg-2);font-size:.9rem;margin-top:4px}.cost{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+    .cost small{display:block;font-weight:400;color:var(--fg-2);font-size:.78rem}
+    .empty{padding:20px;display:grid;gap:6px;color:var(--fg-2);font-size:.92rem}.empty strong{color:var(--fg)}
+    .more{display:grid;gap:10px}details{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+    summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:.92rem}
+    details>div,details>pre{border-top:1px solid var(--line)}
+    details ul{margin:0;padding:12px 14px 12px 32px;font-size:.88rem;color:var(--fg-2)}
+    pre{margin:0;padding:14px;overflow:auto;font-family:var(--font-mono);font-size:.76rem;line-height:1.5;max-height:420px}
+    .credits{font-size:.82rem;color:var(--fg-2)}
+    @media(max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+    @media(max-width:620px){.stop{grid-template-columns:minmax(0,1fr)}.thumb{width:100%;aspect-ratio:16/9}
+      .cost{text-align:left}.day-h{grid-template-columns:minmax(0,1fr)}.day-meta{justify-content:flex-start}.hero{aspect-ratio:auto;min-height:240px}}
+  </style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main class="wrap">
+  <div class="topbar">
+    <a class="btn" id="back" href="/">&larr; Back to planner</a>
+    <a class="btn primary" id="pdf" href="__PDF_URL__" download>Download PDF</a>
+  </div>
+  <p class="dl-note" id="dl-note" role="status" aria-live="polite"></p>
+  <div class="sample" id="sample-banner" hidden>Sample data for preview. In your app this page shows the trip your planner returned.</div>
+  <header class="hero" id="hero"><div class="cap"><h1 id="h-dest"></h1><p class="when" id="h-when"></p></div></header>
+  <div class="chips" id="h-chips"></div>
+  <section class="grid2">
+    <div class="card" id="budget"></div>
+    <div class="card"><h2>Trip details</h2><dl class="facts" id="facts"></dl></div>
+  </section>
+  <nav class="daynav" id="daynav" aria-label="Jump to a day"></nav>
+  <div id="days" style="display:grid;gap:18px"></div>
+  <section class="more">
+    <details id="notes-box" hidden><summary id="notes-sum">Planner notes</summary><ul id="notes-list"></ul></details>
+    <details><summary>Raw planner response (JSON)</summary><pre id="raw" tabindex="0"></pre></details>
+    <p class="credits" id="credits"></p>
+  </section>
+</main>
+<script type="application/json" id="trip-data">__TRIP_JSON__</script>
+<script>
+(function(){
+  var $=function(s,r){return (r||document).querySelector(s)};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  var sampleTrip={request:'Sample Goa itinerary',parsed_request:{destination:'Goa',days:1,budget:25000,currency:'INR',group_size:2,interests:['beaches','food'],pace:'balanced'},saved_trip:{id:'sample'},itinerary_output:{itinerary:{destination:'Goa',days:1,days_plan:[{day:1,date:'2026-12-10',stops:[]}]}}};
+  var injected=null;
+  try{var el=$('#trip-data');if(el&&el.textContent.trim())injected=JSON.parse(el.textContent)}catch(e){}
+  var sample=!injected,data=injected||sampleTrip,pr=data.parsed_request||{};
+  var out=data.itinerary_output||(data.saved_trip&&data.saved_trip.itinerary)||{};
+  var it=out.itinerary||{},bs=it.budget_summary||{},dest=it.destination||pr.destination||'Your trip';
+  var cur=it.currency||pr.currency||'INR',days=Array.isArray(it.days_plan)?it.days_plan:[];
+  var nDays=it.days||pr.days||days.length||1,tripId=data.saved_trip&&data.saved_trip.id;
+  function money(n){if(n==null||isNaN(n))return '';try{return new Intl.NumberFormat(cur==='INR'?'en-IN':'en-US',{style:'currency',currency:cur,maximumFractionDigits:0}).format(Math.round(n))}catch(e){return cur+' '+Math.round(n)}}
+  function pd(s){var p=String(s||'').split('-').map(Number);if(p.length!==3||p.some(isNaN))return null;var d=new Date(p[0],p[1]-1,p[2]);return isNaN(d.getTime())?null:d}
+  var fShort=new Intl.DateTimeFormat('en-IN',{weekday:'short',day:'numeric',month:'short'}),fLong=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  function addD(d,n){var x=new Date(d.getTime());x.setDate(x.getDate()+n);return x}
+  function list(a){return Array.isArray(a)?a.join(', '):''}
+  function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1)}
+  function firstValue(){for(var i=0;i<arguments.length;i++)if(arguments[i]!==undefined&&arguments[i]!==null&&arguments[i]!=='')return arguments[i];return ''}
+  var pdf=$('#pdf');
+  if(sample){$('#sample-banner').hidden=false;pdf.addEventListener('click',function(e){e.preventDefault();$('#dl-note').textContent='Sample data has no downloadable PDF.'})}
+  else{pdf.href=window.TRIP_PDF_URL||(tripId?'/trips/'+encodeURIComponent(tripId)+'/pdf':'#')}
+  if(window.PLANNER_URL)$('#back').href=window.PLANNER_URL;
+  pdf.addEventListener('click',async function(e){
+    if(sample||!tripId)return;
+    e.preventDefault();if(pdf.getAttribute('aria-disabled')==='true')return;
+    pdf.setAttribute('aria-disabled','true');pdf.textContent='Preparing PDF...';$('#dl-note').textContent='';
+    try{
+      var response=await fetch(pdf.href);if(!response.ok)throw new Error('PDF download failed (HTTP '+response.status+').');
+      var blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
+      var match=(response.headers.get('Content-Disposition')||'').match(/filename="([^"]+)"/i);
+      link.href=url;link.download=match?match[1]:'itinerary.pdf';document.body.appendChild(link);link.click();link.remove();
+      setTimeout(function(){URL.revokeObjectURL(url)},1000);$('#dl-note').textContent='PDF downloaded.';
+    }catch(error){$('#dl-note').textContent=error.message||'PDF download failed.'}
+    finally{pdf.textContent='Download PDF';pdf.removeAttribute('aria-disabled')}
+  });
+  var sd=pd(it.start_date||pr.start_date),ed=sd?addD(sd,nDays-1):null;
+  $('#h-dest').textContent=dest;
+  $('#h-when').textContent=sd?fLong.format(sd)+' to '+fLong.format(ed)+' · '+nDays+(nDays===1?' day':' days'):nDays+' days';
+  var gs=Number(pr.group_size||1),chips=['<span class="pill hl">'+gs+(gs===1?' traveller':' travellers')+'</span>'];
+  if(pr.pace)chips.push('<span class="pill">'+esc(cap(pr.pace))+' pace</span>');
+  (Array.isArray(pr.interests)?pr.interests:it.interests||[]).forEach(function(i){chips.push('<span class="pill">'+esc(cap(i))+'</span>')});
+  $('#h-chips').innerHTML=chips.join('');
+  var keys=['stay','food','transport','activities','misc'],names={stay:'Stay',food:'Food',transport:'Transport',activities:'Activities',misc:'Miscellaneous'};
+  var colors={stay:'--c1',food:'--c2',transport:'--c3',activities:'--c4',misc:'--c5'};
+  var total=firstValue(bs.budget_total,pr.budget,it.budget,0),split=pr.budget_split||bs.category_allocations||{};
+  var sum=keys.reduce(function(a,k){return a+(Number(split[k])||0)},0)||1,perDay=Number(bs.daily_budget_ceiling)||Number(total)/(nDays||1);
+  var priced=days.reduce(function(a,d){return a+(Number(d.estimated_day_cost)||0)},0);
+  var budget='<h2>Budget</h2><div><p class="total">'+esc(money(total))+'</p><p class="sub">'+esc(money(Number(total)/(gs||1)/(nDays||1)))+' per person per day</p></div>';
+  budget+='<div class="bar" role="img" aria-label="Budget split">'+keys.map(function(k){return '<i style="width:'+((Number(split[k])||0)/sum*100)+'%;background:var('+colors[k]+')"></i>'}).join('')+'</div>';
+  budget+='<ul class="legend">'+keys.map(function(k){return '<li><i class="sw" style="background:var('+colors[k]+')"></i><span>'+names[k]+'</span><span class="num">'+esc(money(Number(split[k])||0))+'</span></li>'}).join('')+'</ul>';
+  budget+='<p class="sub">Shares are planning allocations, not quoted prices. Priced items so far: '+esc(money(priced))+'.</p>';$('#budget').innerHTML=budget;
+  var rows=[['From',pr.origin],['Arriving by',pr.arrival_mode],['Group',pr.group_type],['Areas',list(pr.areas)],['Stay',pr.stay_type],
+    ['Getting around',list(pr.local_transport)],['Eating',pr.diet],['Food focus',list(pr.food_styles)],['Notes',pr.notes]];
+  rows=rows.filter(function(r){return r[1]!==undefined&&r[1]!==null&&r[1]!==''});
+  $('#facts').innerHTML=rows.length?rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'}).join(''):'<dt>Request</dt><dd>'+esc(data.request||'')+'</dd>';
+  function stopData(s){var cost=firstValue(s.cost_estimate,s.estimated_cost,s.cost,s.price);
+    return {name:firstValue(s.name,s.title,s.place,'Stop'),cat:firstValue(s.category,s.type),time:firstValue(s.time,s.start_time),
+      desc:firstValue(s.description,s.summary,s.notes),cost:cost,img:firstValue(s.image_url,s.image),credit:s.image_credit||'',wiki:s.wiki_title||''}}
+  var html='',nav='',ceiling=Number(bs.daily_budget_ceiling)||Number(total)/(nDays||1);
+  days.forEach(function(day,i){
+    var dt=pd(day.date),num=day.day||i+1,dayCost=Number(day.estimated_day_cost)||0;
+    nav+='<a href="#day-'+num+'">Day '+num+(dt?' · '+esc(fShort.format(dt)):'')+'</a>';
+    var meta='';if(day.weather&&String(day.weather).toLowerCase()!=='unavailable')meta+='<span class="pill">'+esc(day.weather)+(day.temperature_range?' · '+esc(day.temperature_range):'')+'</span>';
+    meta+='<span class="pill num">'+esc(money(dayCost))+' of '+esc(money(ceiling))+' a day</span>';
+    html+='<section class="day" id="day-'+num+'"><div class="day-h"><div><h2>Day '+num+'</h2><p class="d">'+(dt?esc(fShort.format(dt)):esc(day.date||''))+'</p></div><div class="day-meta">'+meta+'</div></div>';
+    var stops=(Array.isArray(day.stops)?day.stops:[]).map(stopData);
+    if(!stops.length)html+='<div class="empty"><strong>No stops for this day yet</strong><span>'+esc(day.notes||'The planner could not match verified places for this day.')+' Try choosing specific areas in the planner and generate again.</span></div>';
+    else html+='<ul class="stops">'+stops.map(function(stop){
+      var noPrice=stop.cost===''||stop.cost===undefined||stop.cost===null;
+      var price=noPrice?'<small>Price not available</small>':(Number(stop.cost)===0?'Free':esc(money(stop.cost)));
+      return '<li class="stop"><div class="thumb" data-name="'+esc(stop.name)+'" data-wiki="'+esc(stop.wiki)+'" data-img="'+esc(stop.img)+'" data-credit="'+esc(stop.credit)+'"></div><div>'+
+        (stop.cat||stop.time?'<p class="tag">'+esc([stop.time,stop.cat].filter(Boolean).join(' · '))+'</p>':'')+'<h3>'+esc(stop.name)+'</h3>'+
+        (stop.desc?'<p>'+esc(stop.desc)+'</p>':'')+'</div><div class="cost">'+price+'</div></li>';
+    }).join('')+'</ul>';
+    html+='</section>';
+  });
+  if(!days.length)html='<div class="card"><h2>Itinerary</h2><p class="sub">The planner did not return any days.</p></div>';
+  $('#days').innerHTML=html;$('#daynav').innerHTML=nav;
+  var warnings=Array.isArray(it.data_warnings)?it.data_warnings:[];
+  if(warnings.length){$('#notes-box').hidden=false;$('#notes-sum').textContent='Planner notes ('+warnings.length+')';$('#notes-list').innerHTML=warnings.map(function(w){return '<li>'+esc(w)+'</li>'}).join('')}
+  $('#raw').textContent=JSON.stringify(data,null,2);
+  var credits={},cache={};
+  function showCredits(){var names=Object.keys(credits);$('#credits').innerHTML=names.length?'Images: '+names.map(function(name){var url=credits[name];return url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(name)+'</a>':esc(name)}).join(', '):''}
+  function setImg(box,src,alt){var img=new Image();img.alt=alt;img.loading='lazy';img.src=src;box.appendChild(img)}
+  function wiki(title){
+    if(cache[title])return cache[title];
+    cache[title]=fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title.replace(/ /g,'_')))
+      .then(function(r){if(!r.ok)throw new Error('Image unavailable');return r.json()})
+      .then(function(j){if(j.type==='disambiguation'||!j.thumbnail)throw new Error('Image unavailable');
+        return {src:j.thumbnail.source,title:j.title,page:(j.content_urls&&j.content_urls.desktop&&j.content_urls.desktop.page)||''}});
+    return cache[title]
+  }
+  function first(titles){return titles.reduce(function(p,title){return p.catch(function(){return wiki(title)})},Promise.reject())}
+  document.querySelectorAll('.thumb').forEach(function(box){
+    var name=box.getAttribute('data-name'),wikiTitle=box.getAttribute('data-wiki'),own=box.getAttribute('data-img'),credit=box.getAttribute('data-credit');
+    if(own){setImg(box,own,name);if(credit)credits[credit]='';showCredits();return}
+    first([wikiTitle||name,name+' '+dest,name+', '+dest]).then(function(image){setImg(box,image.src,name);credits[image.title]=image.page;showCredits()}).catch(function(){});
+  });
+  var heroImage=data.hero_image_url;
+  if(heroImage){var hero=new Image();hero.alt='';hero.src=heroImage;$('#hero').insertBefore(hero,$('#hero').firstChild);if(data.hero_image_credit)credits[data.hero_image_credit]='';showCredits()}
+  else first([dest,dest+' tourism']).then(function(image){
+    var hero=$('#hero'),img=new Image();img.alt='';img.onerror=function(){if(img.src!==image.src)img.src=image.src;else img.remove()};
+    img.src=image.src.replace(/\/\d+px-/,'/1000px-');hero.insertBefore(img,hero.firstChild);credits[image.title]=image.page;showCredits()
+  }).catch(function(){$('#hero').classList.add('noimg')});
+})();
+</script>
+</body>
+</html>
