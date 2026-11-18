@@ -210,8 +210,19 @@ class PlannerHandler(BaseHTTPRequestHandler):
             if result["status"] != "finalized" or not session.get("saved_trip"):
                 message = (
                     result.get("validation", {}).get("follow_up_question")
-                    or "The planner could not complete this trip request."
                 )
+                if not message:
+                    itinerary = result.get("itinerary") or {}
+                    warnings = itinerary.get("data_warnings") or []
+                    issues = (result.get("verification") or {}).get("issues") or []
+                    details = warnings[:3] + [
+                        issue.get("message", "")
+                        for issue in issues[:3]
+                        if issue.get("message")
+                    ]
+                    message = "The planner could not complete this trip request."
+                    if details:
+                        message += " " + " ".join(details)
                 self._send_json(422, {"error": message, "result": result})
                 return
             trip_id = session["saved_trip"]["id"]

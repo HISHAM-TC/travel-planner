@@ -7,8 +7,9 @@ from typing import Any
 def estimate_travel_time(
     origin: tuple[float, float],
     destination: tuple[float, float],
+    transport_modes: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Estimate travel from coordinates using straight-line distance, clearly labeled."""
+    """Estimate transfer time using distance and the selected mode's assumed speed."""
     lat1, lon1 = origin
     lat2, lon2 = destination
     if not all(math.isfinite(value) for value in (lat1, lon1, lat2, lon2)):
@@ -26,10 +27,27 @@ def estimate_travel_time(
         * math.sin(delta_lon / 2) ** 2
     )
     distance_km = 2 * radius_km * math.asin(math.sqrt(haversine))
+    selected_modes = {mode.casefold() for mode in (transport_modes or [])}
+    if "mostly on foot" in selected_modes:
+        speed_km_per_hour = 4
+        mode_assumption = "walking"
+    elif "public bus" in selected_modes:
+        speed_km_per_hour = 20
+        mode_assumption = "public_bus"
+    elif "rented scooter" in selected_modes:
+        speed_km_per_hour = 25
+        mode_assumption = "scooter"
+    elif selected_modes.intersection({"taxi / cab", "own car"}):
+        speed_km_per_hour = 30
+        mode_assumption = "car"
+    else:
+        speed_km_per_hour = 25
+        mode_assumption = "default"
     return {
         "status": "estimated",
         "distance_km": round(distance_km, 1),
-        "estimated_minutes": round(distance_km / 25 * 60),
-        "method": "straight_line_distance_at_25_km_per_hour",
+        "estimated_minutes": round(distance_km / speed_km_per_hour * 60),
+        "mode_assumption": mode_assumption,
+        "method": f"straight_line_distance_at_{speed_km_per_hour}_km_per_hour",
         "warning": "Approximation only; not a routed road or transit estimate.",
     }

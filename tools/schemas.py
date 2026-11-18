@@ -22,7 +22,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "search_places",
-            "description": "Search OpenStreetMap within the requested destination areas and apply any specified dietary preference.",
+            "description": "Find named OpenStreetMap places inside the destination boundary, searching each requested interest and food style and prioritizing selected areas. Return only matching place categories and disclose missing results or unverified dietary details.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -48,6 +48,7 @@ TOOL_SCHEMAS = [
                 "properties": {
                     "origin": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
                     "destination": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+                    "transport_modes": {"type": "array", "items": {"type": "string"}},
                 },
                 "required": ["origin", "destination"],
                 "additionalProperties": False,

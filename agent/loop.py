@@ -7,7 +7,7 @@ from typing import Any
 from app.config import API_TIMEOUT_SECONDS, MODEL_NAME, OPENAI_API_KEY
 from app.parser import parse_trip_request
 from app.validator import validate_trip_request
-from agent.planner import build_itinerary
+from agent.planner import PACE_LIMITS, build_itinerary, distribute_places, interleave_places
 from agent.verifier import finalize_itinerary
 from models.trip import TripRequest, trip_request_from_dict
 from tools.budget import calculate_trip_budget
@@ -129,7 +129,7 @@ def _gather_with_openai(trip: TripRequest) -> dict[str, Any]:
             )
 
     _ensure_required_tool_results(trip, results)
-    _add_route_estimates(results)
+    _add_route_estimates(results, trip)
     return results
 
 
@@ -140,6 +140,7 @@ def _gather_directly(trip: TripRequest) -> dict[str, Any]:
         "places": search_places(
             trip.destination or "",
             trip.interests or [],
+            limit=_place_search_limit(trip),
             areas=trip.areas,
             diet=trip.diet,
             food_styles=trip.food_styles,
@@ -155,7 +156,7 @@ def _gather_directly(trip: TripRequest) -> dict[str, Any]:
     logger.info("Tool call direct: weather")
     logger.info("Tool call direct: search_places")
     logger.info("Tool call direct: calculate_trip_budget")
-    _add_route_estimates(results)
+    _add_route_estimates(results, trip)
     return results
 
 
@@ -169,7 +170,9 @@ def _execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if name == "estimate_travel_time":
         origin = tuple(arguments["origin"])
         destination = tuple(arguments["destination"])
-        return estimate_travel_time(origin, destination)
+        return estimate_travel_time(
+            origin, destination, transport_modes=arguments.get("transport_modes")
+        )
     raise ValueError(f"Unknown tool requested by model: {name}")
 
 
@@ -189,6 +192,7 @@ def _structured_tool_arguments(name: str, arguments: dict[str, Any], trip: TripR
             "areas": trip.areas or [],
             "diet": trip.diet,
             "food_styles": trip.food_styles or [],
+            "limit": _place_search_limit(trip),
         }
     if name == "calculate_trip_budget":
         return {
@@ -198,6 +202,8 @@ def _structured_tool_arguments(name: str, arguments: dict[str, Any], trip: TripR
             "currency": trip.currency or "INR",
             "budget_split": trip.budget_split,
         }
+    if name == "estimate_travel_time":
+        return {**arguments, "transport_modes": trip.local_transport or []}
     return arguments
 
 
@@ -232,6 +238,7 @@ def _ensure_required_tool_results(trip: TripRequest, results: dict[str, Any]) ->
         results["places"] = search_places(
             trip.destination or "",
             trip.interests or [],
+            limit=_place_search_limit(trip),
             areas=trip.areas,
             diet=trip.diet,
             food_styles=trip.food_styles,
@@ -246,19 +253,28 @@ def _ensure_required_tool_results(trip: TripRequest, results: dict[str, Any]) ->
         )
 
 
-def _add_route_estimates(results: dict[str, Any]) -> None:
-    places = results.get("places", {}).get("places", [])
+def _add_route_estimates(results: dict[str, Any], trip: TripRequest) -> None:
+    places = interleave_places(results.get("places", {}).get("places", []))
     estimates = results.setdefault("travel_estimates", [])
     existing = {(item.get("origin"), item.get("destination")) for item in estimates}
-    for first, second in zip(places, places[1:]):
-        pair = (first.get("name"), second.get("name"))
-        if pair in existing:
-            continue
-        estimate = estimate_travel_time(
-            (first["latitude"], first["longitude"]),
-            (second["latitude"], second["longitude"]),
-        )
-        estimates.append({"origin": pair[0], "destination": pair[1], **estimate})
+    pace_limit = PACE_LIMITS.get((trip.pace or "balanced").lower(), 4)
+    for day_places in distribute_places(places, trip.days or 0, pace_limit):
+        for first, second in zip(day_places, day_places[1:]):
+            pair = (first.get("name"), second.get("name"))
+            if pair in existing:
+                continue
+            estimate = estimate_travel_time(
+                (first["latitude"], first["longitude"]),
+                (second["latitude"], second["longitude"]),
+                transport_modes=trip.local_transport,
+            )
+            estimates.append({"origin": pair[0], "destination": pair[1], **estimate})
+            existing.add(pair)
+
+
+def _place_search_limit(trip: TripRequest) -> int:
+    pace_limit = PACE_LIMITS.get((trip.pace or "balanced").lower(), 4)
+    return min(20, max(1, (trip.days or 1) * pace_limit))
 
 
 def _openai_error_types():

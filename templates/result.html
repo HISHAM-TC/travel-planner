@@ -101,6 +101,7 @@
   </div>
   <p class="dl-note" id="dl-note" role="status" aria-live="polite"></p>
   <div class="sample" id="sample-banner" hidden>Sample data for preview. In your app this page shows the trip your planner returned.</div>
+  <div class="sample" id="plan-status" role="status" hidden></div>
   <header class="hero" id="hero"><div class="cap"><h1 id="h-dest"></h1><p class="when" id="h-when"></p></div></header>
   <div class="chips" id="h-chips"></div>
   <section class="grid2">
@@ -128,6 +129,14 @@
   var it=out.itinerary||{},bs=it.budget_summary||{},dest=it.destination||pr.destination||'Your trip';
   var cur=it.currency||pr.currency||'INR',days=Array.isArray(it.days_plan)?it.days_plan:[];
   var nDays=it.days||pr.days||days.length||1,tripId=data.saved_trip&&data.saved_trip.id;
+  var warnings=Array.isArray(it.data_warnings)?it.data_warnings:[];
+  if(!sample&&((out.status&&out.status!=='finalized')||warnings.length)){
+    var status=$('#plan-status');status.hidden=false;
+    status.textContent=(out.status&&out.status!=='finalized'
+      ?'This itinerary is incomplete and has not been saved as a finished trip. '
+      :'Planner notes: ')+(warnings.slice(0,2).join(' ')||'Check the planner notes below for search details.');
+  }
+  if(!sample&&(!tripId||out.status!=='finalized'))$('#pdf').hidden=true;
   function money(n){if(n==null||isNaN(n))return '';try{return new Intl.NumberFormat(cur==='INR'?'en-IN':'en-US',{style:'currency',currency:cur,maximumFractionDigits:0}).format(Math.round(n))}catch(e){return cur+' '+Math.round(n)}}
   function pd(s){var p=String(s||'').split('-').map(Number);if(p.length!==3||p.some(isNaN))return null;var d=new Date(p[0],p[1]-1,p[2]);return isNaN(d.getTime())?null:d}
   var fShort=new Intl.DateTimeFormat('en-IN',{weekday:'short',day:'numeric',month:'short'}),fLong=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'});
@@ -162,40 +171,68 @@
   var keys=['stay','food','transport','activities','misc'],names={stay:'Stay',food:'Food',transport:'Transport',activities:'Activities',misc:'Miscellaneous'};
   var colors={stay:'--c1',food:'--c2',transport:'--c3',activities:'--c4',misc:'--c5'};
   var total=firstValue(bs.budget_total,pr.budget,it.budget,0),split=pr.budget_split||bs.category_allocations||{};
-  var sum=keys.reduce(function(a,k){return a+(Number(split[k])||0)},0)||1,perDay=Number(bs.daily_budget_ceiling)||Number(total)/(nDays||1);
+  var sum=keys.reduce(function(a,k){return a+(Number(split[k])||0)},0)||1;
+  var perPersonBudget=pr.budget_mode==='per_person';
   var priced=days.reduce(function(a,d){return a+(Number(d.estimated_day_cost)||0)},0);
-  var budget='<h2>Budget</h2><div><p class="total">'+esc(money(total))+'</p><p class="sub">'+esc(money(Number(total)/(gs||1)/(nDays||1)))+' per person per day</p></div>';
+  var pricedStopCount=days.reduce(function(a,d){return a+(Array.isArray(d.stops)?d.stops.filter(function(s){return s.cost_estimate!==null&&s.cost_estimate!==undefined}).length:0)},0);
+  var perPersonDaily=Number(total)/(perPersonBudget?1:(gs||1))/(nDays||1);
+  var budget='<h2>Budget</h2><div><p class="total">'+esc(money(total))+'</p><p class="sub">'+
+    (perPersonBudget?'per person for the trip · '+esc(money(Number(total)*gs))+' for '+gs+' travellers · ':'total trip budget · ')+
+    esc(money(perPersonDaily))+' per person per day</p></div>';
   budget+='<div class="bar" role="img" aria-label="Budget split">'+keys.map(function(k){return '<i style="width:'+((Number(split[k])||0)/sum*100)+'%;background:var('+colors[k]+')"></i>'}).join('')+'</div>';
   budget+='<ul class="legend">'+keys.map(function(k){return '<li><i class="sw" style="background:var('+colors[k]+')"></i><span>'+names[k]+'</span><span class="num">'+esc(money(Number(split[k])||0))+'</span></li>'}).join('')+'</ul>';
-  budget+='<p class="sub">Shares are planning allocations, not quoted prices. Priced items so far: '+esc(money(priced))+'.</p>';$('#budget').innerHTML=budget;
-  var rows=[['From',pr.origin],['Arriving by',pr.arrival_mode],['Group',pr.group_type],['Areas',list(pr.areas)],['Stay',pr.stay_type],
-    ['Getting around',list(pr.local_transport)],['Eating',pr.diet],['Food focus',list(pr.food_styles)],['Notes',pr.notes]];
+  budget+='<p class="sub">'+(pricedStopCount
+    ?'Known sourced prices: '+esc(money(priced))+' across '+pricedStopCount+' item(s); unpriced activities are excluded.'
+    :'No sourced activity prices are available; this is not a zero-cost itinerary.')+' Budget shares are planning allocations, not quotes.</p>';$('#budget').innerHTML=budget;
+  var travelers=pr.travelers||{},travelerText=[];
+  if(travelers.adults!=null)travelerText.push(travelers.adults+' adults');
+  if(travelers.children!=null&&travelers.children>0)travelerText.push(travelers.children+' children');
+  if(!travelerText.length&&pr.group_size)travelerText.push(pr.group_size+' travellers');
+  var rows=[['From',pr.origin],['Arriving by',pr.arrival_mode],['Group',pr.group_type],['Travelers',travelerText.join(', ')],
+    ['Areas',list(pr.areas)],['Dates',pr.flexible_dates===true?'Flexible by up to 2 days':pr.flexible_dates===false?'Fixed dates':''],
+    ['Budget basis',pr.budget_mode==='per_person'?'Per person':pr.budget_mode==='total'?'Total trip budget':''],
+    ['Stay',pr.stay_type],['Getting around',list(pr.local_transport)],['Eating',pr.diet],['Food focus',list(pr.food_styles)],['Notes',pr.notes]];
   rows=rows.filter(function(r){return r[1]!==undefined&&r[1]!==null&&r[1]!==''});
   $('#facts').innerHTML=rows.length?rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'}).join(''):'<dt>Request</dt><dd>'+esc(data.request||'')+'</dd>';
-  function stopData(s){var cost=firstValue(s.cost_estimate,s.estimated_cost,s.cost,s.price);
+  function stopData(s){var cost=firstValue(s.cost_estimate,s.estimated_cost,s.cost,s.price),details=s.details||{};
     return {name:firstValue(s.name,s.title,s.place,'Stop'),cat:firstValue(s.category,s.type),time:firstValue(s.time,s.start_time),
-      desc:firstValue(s.description,s.summary,s.notes),cost:cost,img:firstValue(s.image_url,s.image),credit:s.image_credit||'',wiki:s.wiki_title||''}}
+      end:firstValue(s.end_time),duration:s.duration_minutes,desc:firstValue(s.description,s.summary,s.notes),cost:cost,
+      img:firstValue(s.image_url,s.image),credit:s.image_credit||'',wiki:s.wiki_title||'',area:s.area||'',
+      address:details.address||'',hours:details.opening_hours||'',cuisine:details.cuisine||'',
+      wheelchair:details.wheelchair||'',website:details.website||'',phone:details.phone||'',diet:s.dietary_status||'',
+      transfer:firstValue(s.travel_from_previous,s.transfer_buffer_minutes)}}
   var html='',nav='',ceiling=Number(bs.daily_budget_ceiling)||Number(total)/(nDays||1);
   days.forEach(function(day,i){
     var dt=pd(day.date),num=day.day||i+1,dayCost=Number(day.estimated_day_cost)||0;
+    var stops=(Array.isArray(day.stops)?day.stops:[]).map(stopData);
     nav+='<a href="#day-'+num+'">Day '+num+(dt?' · '+esc(fShort.format(dt)):'')+'</a>';
     var meta='';if(day.weather&&String(day.weather).toLowerCase()!=='unavailable')meta+='<span class="pill">'+esc(day.weather)+(day.temperature_range?' · '+esc(day.temperature_range):'')+'</span>';
-    meta+='<span class="pill num">'+esc(money(dayCost))+' of '+esc(money(ceiling))+' a day</span>';
+    var dayPriced=stops.filter(function(stop){return stop.cost!==''&&stop.cost!==undefined&&stop.cost!==null}).length;
+    meta+='<span class="pill num">'+(stops.length?(dayPriced?esc(money(dayCost))+' known of '+esc(money(ceiling))+' a day':'Prices unavailable'):'No places found')+'</span>';
     html+='<section class="day" id="day-'+num+'"><div class="day-h"><div><h2>Day '+num+'</h2><p class="d">'+(dt?esc(fShort.format(dt)):esc(day.date||''))+'</p></div><div class="day-meta">'+meta+'</div></div>';
-    var stops=(Array.isArray(day.stops)?day.stops:[]).map(stopData);
-    if(!stops.length)html+='<div class="empty"><strong>No stops for this day yet</strong><span>'+esc(day.notes||'The planner could not match verified places for this day.')+' Try choosing specific areas in the planner and generate again.</span></div>';
+    if(!stops.length)html+='<div class="empty"><strong>No verified places for this day</strong><span>'+esc(day.notes||'No matching place results were returned. Check planner notes for the search provider response; place names and prices are not invented.')+'</span></div>';
     else html+='<ul class="stops">'+stops.map(function(stop){
       var noPrice=stop.cost===''||stop.cost===undefined||stop.cost===null;
       var price=noPrice?'<small>Price not available</small>':(Number(stop.cost)===0?'Free':esc(money(stop.cost)));
+      var duration=Number(stop.duration)>0?' · '+Math.round(Number(stop.duration)/60*10)/10+'h':'';
+      var transfer=stop.transfer!==''&&stop.transfer!==undefined&&stop.transfer!==null?'<p>Estimated transfer: '+esc(stop.transfer)+' min (approximate)</p>':'';
+      var details='';
+      if(stop.area)details+='<p>Selected area: '+esc(stop.area)+'</p>';
+      if(stop.address)details+='<p>Mapped address: '+esc(stop.address)+'</p>';
+      if(stop.cuisine)details+='<p>Cuisine: '+esc(stop.cuisine)+'</p>';
+      if(stop.hours)details+='<p>OpenStreetMap hours: '+esc(stop.hours)+'</p>';
+      if(stop.wheelchair)details+='<p>Wheelchair access (map listing): '+esc(stop.wheelchair)+'</p>';
+      if(stop.phone)details+='<p>Phone (map listing): '+esc(stop.phone)+'</p>';
+      if(stop.diet==='unverified')details+='<p>Dietary suitability is not confirmed; contact the venue.</p>';
+      if(stop.website&&/^https?:\/\//i.test(stop.website))details+='<p><a href="'+esc(stop.website)+'" target="_blank" rel="noopener">Venue website</a></p>';
       return '<li class="stop"><div class="thumb" data-name="'+esc(stop.name)+'" data-wiki="'+esc(stop.wiki)+'" data-img="'+esc(stop.img)+'" data-credit="'+esc(stop.credit)+'"></div><div>'+
-        (stop.cat||stop.time?'<p class="tag">'+esc([stop.time,stop.cat].filter(Boolean).join(' · '))+'</p>':'')+'<h3>'+esc(stop.name)+'</h3>'+
-        (stop.desc?'<p>'+esc(stop.desc)+'</p>':'')+'</div><div class="cost">'+price+'</div></li>';
+        (stop.cat||stop.time?'<p class="tag">'+esc([stop.time+(stop.end?'–'+stop.end:''),stop.cat].filter(Boolean).join(' · ')+duration)+'</p>':'')+'<h3>'+esc(stop.name)+'</h3>'+
+        (stop.desc?'<p>'+esc(stop.desc)+'</p>':'')+transfer+details+'</div><div class="cost">'+price+'</div></li>';
     }).join('')+'</ul>';
     html+='</section>';
   });
   if(!days.length)html='<div class="card"><h2>Itinerary</h2><p class="sub">The planner did not return any days.</p></div>';
   $('#days').innerHTML=html;$('#daynav').innerHTML=nav;
-  var warnings=Array.isArray(it.data_warnings)?it.data_warnings:[];
   if(warnings.length){$('#notes-box').hidden=false;$('#notes-sum').textContent='Planner notes ('+warnings.length+')';$('#notes-list').innerHTML=warnings.map(function(w){return '<li>'+esc(w)+'</li>'}).join('')}
   $('#raw').textContent=JSON.stringify(data,null,2);
   var credits={},cache={};

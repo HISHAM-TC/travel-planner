@@ -19,6 +19,14 @@ def verify_itinerary(trip: TripRequest, itinerary: dict[str, Any]) -> dict[str, 
         return _result([{"type": "empty_plan", "message": "No day plans were generated."}], warnings, 0, trip.budget or 0)
     if trip.days is not None and len(plans) != trip.days:
         issues.append({"type": "day_count", "message": f"Expected {trip.days} day plans, received {len(plans)}."})
+    unmatched_preferences = itinerary.get("unmatched_preferences", [])
+    if unmatched_preferences:
+        issues.append(
+            {
+                "type": "unmatched_preferences",
+                "message": "No verified place results matched: " + ", ".join(unmatched_preferences) + ".",
+            }
+        )
 
     budget = float(trip.budget or 0)
     pace_limit = PACE_LIMITS.get((trip.pace or "balanced").lower(), 4)
@@ -26,6 +34,13 @@ def verify_itinerary(trip: TripRequest, itinerary: dict[str, Any]) -> dict[str, 
     unpriced = 0
     for day_number, day in enumerate(plans, start=1):
         stops = day.get("stops", [])
+        if not stops:
+            issues.append(
+                {
+                    "type": "empty_day",
+                    "message": f"Day {day_number} has no verified places and is incomplete.",
+                }
+            )
         if len(stops) > pace_limit:
             issues.append({"type": "pace_limit", "message": f"Day {day_number} has {len(stops)} stops; limit is {pace_limit}."})
         previous_minutes = None

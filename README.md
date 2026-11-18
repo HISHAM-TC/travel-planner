@@ -31,6 +31,7 @@ python local_app.py
 ```
 Open `http://127.0.0.1:8000` to plan a trip with the structured form and view its saved itinerary.
 Saved trip result pages also provide a PDF download. PDFs use ReportLab and locally cached Wikimedia/optional stock images, with generated placeholders when no suitable licensed image is available.
+Place searches are bounded to the destination and targeted to the selected interests, areas, and food styles using OpenStreetMap. Stop details include mapped addresses and available hours/cuisine/accessibility tags; prices and dietary suitability remain unverified unless the map provides them. Plans with days that have no verified places are marked incomplete and are not saved as finished trips. Stay preferences are shown in the trip details, but hotel availability and booking prices are not searched.
 
 ## Public hosting (Render)
 1. Push this project to a GitHub repository. Do not commit your `.env` file or API keys.

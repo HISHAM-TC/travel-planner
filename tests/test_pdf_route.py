@@ -44,6 +44,32 @@ class PdfRouteTests(unittest.TestCase):
                 urllib.request.urlopen(f"{self.base_url}/trips/missing/pdf")
         self.assertEqual(error.exception.code, 404)
 
+    def test_incomplete_plan_returns_place_search_details_to_the_form(self):
+        session = {
+            "saved_trip": None,
+            "itinerary_output": {
+                "status": "needs_review",
+                "itinerary": {"data_warnings": ["No beach results were found in Goa."]},
+                "verification": {
+                    "issues": [{"type": "empty_day", "message": "Day 1 has no verified places."}]
+                },
+            },
+        }
+        request = urllib.request.Request(
+            f"{self.base_url}/plan",
+            data=json.dumps({"request": "Goa", "destination": "Goa"}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch("local_app.build_chat_session", return_value=session):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                urllib.request.urlopen(request)
+
+        payload = json.loads(error.exception.read().decode())
+        self.assertEqual(error.exception.code, 422)
+        self.assertIn("No beach results were found in Goa.", payload["error"])
+        self.assertIn("Day 1 has no verified places.", payload["error"])
+
     def test_result_page_adds_download_link_without_removing_existing_links(self):
         page = render_result(
             "A saved request",
