@@ -17,7 +17,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.ttfonts import TTFError, TTFont
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -128,7 +128,7 @@ def _register_fonts() -> tuple[str, str]:
             pdfmetrics.registerFont(TTFont(regular_name, regular_path))
             pdfmetrics.registerFont(TTFont(bold_name, bold_path))
             return regular_name, bold_name
-        except (OSError, ValueError):
+        except (OSError, ValueError, TTFError):
             continue
     return "Helvetica", "Helvetica-Bold"
 

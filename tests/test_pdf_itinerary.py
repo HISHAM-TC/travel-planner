@@ -12,10 +12,15 @@ from unittest.mock import patch
 from PIL import Image
 
 import images
-from pdf_itinerary import _trip_facts, build_itinerary_pdf, safe_filename
+from pdf_itinerary import _register_fonts, _trip_facts, build_itinerary_pdf, safe_filename
+from reportlab.pdfbase.ttfonts import TTFError
 
 
 class PdfItineraryTests(unittest.TestCase):
+    def test_font_registration_falls_back_when_platform_fonts_are_unavailable(self):
+        with patch("pdf_itinerary.TTFont", side_effect=TTFError("font unavailable")):
+            self.assertEqual(_register_fonts(), ("Helvetica", "Helvetica-Bold"))
+
     def test_trip_glance_includes_all_selected_planner_options(self):
         trip = {
             "destination": "Goa",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import html
 import logging
+import os
 import re
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,7 +15,8 @@ import images
 from pdf_itinerary import build_itinerary_pdf, safe_filename
 from storage.json_store import load_trip
 
-PORT = 8000
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", "8000"))
 DEFAULT_REQUEST = "Plan a 4-day trip to Goa with a budget of INR 25000 for 2 people. I like beaches and food. Start on 2026-12-10 and keep it balanced."
 PLANNER_TEMPLATE = Path(__file__).resolve().parent / "templates" / "planner.html"
 RESULT_TEMPLATE = Path(__file__).resolve().parent / "templates" / "result.html"
@@ -242,8 +244,9 @@ class PlannerHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", PORT), PlannerHandler)
-    print(f"Travel planner local app running at http://127.0.0.1:{PORT}")
+    server = ThreadingHTTPServer((HOST, PORT), PlannerHandler)
+    display_host = "127.0.0.1" if HOST == "0.0.0.0" else HOST
+    print(f"Travel planner running at http://{display_host}:{PORT}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
